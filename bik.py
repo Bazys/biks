@@ -37,6 +37,7 @@ try:
         'http://www.cbr.ru/s/newbik')
 
 except Exception as e:
+    local_filename = None
     print(e)
 
 if local_filename is None:
