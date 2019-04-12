@@ -39,52 +39,56 @@ try:
 except Exception as e:
     print(e)
 
-zip_ref = zipfile.ZipFile(local_filename, 'r')
-file_name = zip_ref.namelist()[0]
-biks = xmltodict.parse(zip_ref.read(file_name))['ED807']['BICDirectoryEntry']
-os.remove(local_filename)
-
-add_bik = ("""
-INSERT INTO biks (bik,name,reg_n,cntr_cd,rgn,ind,t_np,n_np,adr,date_in,uid,account)
-VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-""")
-try:
-    cnx = connection.MySQLConnection(user=MYSQL_USER, password=os.environ['MYSQL_PWD'],
-                                     host='127.0.0.1',
-                                     database=MYSQL_DATABASE)
-    cursor = cnx.cursor()
-    cursor.execute("TRUNCATE biks;")
-    for bik in biks:
-        corr = None
-        participant_info = bik.get('ParticipantInfo')
-        accounts = bik.get('Accounts', False)
-        if accounts:
-            if type(accounts) is list:
-                corr = accounts[0].get('@Account')
-            else:
-                corr = accounts.get('@Account')
-        data_bik = (bik['@BIC'],
-                    participant_info.get('@NameP'),
-                    participant_info.get('@RegN', None),
-                    participant_info.get('@CntrCd', 'RU'),
-                    participant_info.get('@Rgn', None),
-                    participant_info.get('@Ind', None),
-                    participant_info.get('@Tnp', None),
-                    participant_info.get('@Nnp', None),
-                    participant_info.get('@Adr', None),
-                    participant_info.get('@DateIn', None),
-                    participant_info.get('@UID', None),
-                    corr,
-                    )
-        cursor.execute(add_bik, data_bik)
-except mysql.connector.Error as err:
-    if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-        print("Something is wrong with your user name or password")
-    elif err.errno == errorcode.ER_BAD_DB_ERROR:
-        print("Database does not exist")
-    else:
-        print(err)
+if local_filename is None:
+    print('не смогли скачать файл')
 else:
-    cnx.commit()
-    cursor.close()
-    cnx.close()
+    zip_ref = zipfile.ZipFile(local_filename, 'r')
+    file_name = zip_ref.namelist()[0]
+    biks = xmltodict.parse(zip_ref.read(file_name))[
+        'ED807']['BICDirectoryEntry']
+    os.remove(local_filename)
+
+    add_bik = ("""
+    INSERT INTO biks (bik,name,reg_n,cntr_cd,rgn,ind,t_np,n_np,adr,date_in,uid,account)
+    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """)
+    try:
+        cnx = connection.MySQLConnection(user=MYSQL_USER, password=os.environ['MYSQL_PWD'],
+                                         host='127.0.0.1',
+                                         database=MYSQL_DATABASE)
+        cursor = cnx.cursor()
+        cursor.execute("TRUNCATE biks;")
+        for bik in biks:
+            corr = None
+            participant_info = bik.get('ParticipantInfo')
+            accounts = bik.get('Accounts', False)
+            if accounts:
+                if type(accounts) is list:
+                    corr = accounts[0].get('@Account')
+                else:
+                    corr = accounts.get('@Account')
+            data_bik = (bik['@BIC'],
+                        participant_info.get('@NameP'),
+                        participant_info.get('@RegN', None),
+                        participant_info.get('@CntrCd', 'RU'),
+                        participant_info.get('@Rgn', None),
+                        participant_info.get('@Ind', None),
+                        participant_info.get('@Tnp', None),
+                        participant_info.get('@Nnp', None),
+                        participant_info.get('@Adr', None),
+                        participant_info.get('@DateIn', None),
+                        participant_info.get('@UID', None),
+                        corr,
+                        )
+            cursor.execute(add_bik, data_bik)
+    except mysql.connector.Error as err:
+        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Something is wrong with your user name or password")
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            print("Database does not exist")
+        else:
+            print(err)
+    else:
+        cnx.commit()
+        cursor.close()
+        cnx.close()
